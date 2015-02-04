@@ -6,7 +6,7 @@ Ext.define('CustomApp', {
 		this.start_date = '2015-02-02';
 
 		this.rows = [];
-		//this.showTable();
+		this.showTable();
 		this.loadDefects(teams, this.start_date);
 	},
 	
@@ -49,23 +49,18 @@ Ext.define('CustomApp', {
 				}
 				//scope:this
 			},
-			fetch: ['FormattedID', 'Project', 'Parent', 'ScheduleState', 'Iteration', 'PlanEstimate', 'Deliverysatisfactionscore110', 'Teamstatus', 'TeamLifecycle', 'LPCVelocity', 'Release', 'ProductOwnerInvolvement15']
+			fetch: ['FormattedID', 'Project', 'Parent', 'ScheduleState', 'CreationDate', 'AcceptedDate', 'ClosedDate', 'InProgressDate', 'OpenedDate', 'TargetDate', 'RevisionHistory', 'LastUpdateDate', 'PlanEstimate', 'Deliverysatisfactionscore110', 'Teamstatus', 'TeamLifecycle', 'LPCVelocity', 'Release', 'ProductOwnerInvolvement15']
 		});
 		
 	},
 	
-	dataRow: function(program, team, sprint, lpcVelocity, plannedVelocity, actualVelocity, defectpoints, satisfaction) {
+	dataRow: function(date, team, created_num, accepted_num, open_num) {
 		var row = {
-			program: program,
+			date: date,
 			team: team,
-			sprint: sprint,
-			lpcVelocity: lpcVelocity,
-			plannedVelocity: plannedVelocity,
-			actualVelocity: actualVelocity,
-			defectsVelocity: defectpoints,
-			targetUtilization: Math.round(100*plannedVelocity/lpcVelocity).toString(),
-			velocityReliability: Math.round(100*actualVelocity/plannedVelocity).toString(),
-			deliverySatisfaction: satisfaction
+			created: creted_num,
+			accepted: accepted_num,
+			pending: open_num
 		};
 		this.rows.push(row);
 		this.store.load();
@@ -73,19 +68,13 @@ Ext.define('CustomApp', {
 	
 	showTable : function() {
 		var me = this;
-		//var height = 500;
 		this.store = Ext.create('Rally.data.custom.Store', {
 			fields: [
 				{ name : "date" ,          type : "date"},
 				{ name : "team" ,          type : "string"},
-				{ name : "sprint" ,     type : "string"},
-				{ name : "lpcVelocity",    type : "number"}, 
-				{ name : "plannedVelocity",type : "number"}, 
-				{ name : "actualVelocity",type : "number"}, 
-				{ name : "defectsVelocity",type : "number"}, 
-				{ name : "targetUtilization",type : "string"}, 
-				{ name : "velocityReliability",type : "string"}, 
-				{ name : "deliverySatisfaction",type : "number"}
+				{ name : "created" ,     type : "number"},
+				{ name : "accepted",    type : "number"}, 
+				{ name : "opened",type : "number"}
 			],
 			data : this.rows
 		});
@@ -95,22 +84,12 @@ Ext.define('CustomApp', {
 			store: this.store,
 			//height: height,
 			columnCfgs: [
-				{ text : 'Program',           dataIndex: 'program'},
-				{ text : 'Team',           dataIndex: 'team'},
-				{ text : "Sprint",      dataIndex : "sprint", flex: 1.1 },
-				{ text : "LPC Velocity",   dataIndex : "lpcVelocity",      align : "center", renderer: this.renderVelocityinput }, 
-				{ text : "Planned Velocity",dataIndex : "plannedVelocity",  align : "center", renderer: this.renderVelocityinput },
-				{ text : "Actual Velocity",dataIndex : "actualVelocity",  align : "center", renderer: this.renderVelocityinput },
-				{ text : "Defect Story points",dataIndex : "defectsVelocity",  align : "center", renderer: this.renderVelocityinput },
-				{ text : "Target Utilization",dataIndex : "targetUtilization"},
-				{ text : "Velocity Reliability",dataIndex : "velocityReliability"},
-				{ text : "Delivery Satisfaction",dataIndex : "deliverySatisfaction",  align : "center", renderer: this.renderVelocityinput }
-			],
-			listeners: {
-				afterrender: function(grid) {
-					grid.setHeight(me.getHeight()-20);
-				}
-			}
+				{ text : 'Date', dataIndex: 'date', flex: 1.1},
+				{ text : 'Team', dataIndex: 'team', flex: 1.1},
+				{ text : "Created", dataIndex : "created", flex: 1.1},
+				{ text : "Accepted/Completed", dataIndex : "accepted", flex: 1.1}, 
+				{ text : "Opened", dataIndex : "opened", flex: 1.1}
+			]
 		});
 		this.add(this.grid);
 	},
