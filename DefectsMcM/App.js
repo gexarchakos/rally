@@ -3,10 +3,116 @@ Ext.define('CustomApp', {
     componentCls: 'app',
     launch: function() {
 		var teams = ['Blenders', 'Hue', 'Supernova'];
+		this.start_date = '2015-02-02';
+
 		this.rows = [];
-		this.sprints_per_team = 3;
-		this.showTable();
-		this.loadTeams(teams);
+		//this.showTable();
+		this.loadDefects(teams, this.start_date);
+	},
+	
+	loadDefects: function(teams, start_date) {
+		var defectsFilter = null;
+		for(var team=0; team<teams.length; team++) {
+			var tmp = Ext.create('Rally.data.wsapi.Filter', {
+					property: 'Project.Name',
+					operator : "=",
+					value: teams[team]
+				});
+			if(defectsFilter===null) defectsFilter = tmp;
+			else defectsFilter = defectsFilter.or(tmp);
+		}
+		Ext.create('Rally.data.wsapi.Store', {
+			autoLoad : true,
+			model: 'Defect',
+			filters: defectsFilter,
+			listeners: {
+				load: function(store, data, success) {
+					//console.log(data);
+					for(var i=0; i<data.length; i++) {
+						console.log(data[i].data);
+						//if(data[i].data.Project && data[i].data.Project!==null)
+						//	console.log(data[i].data.Project._refObjectName, data[i].data.ScheduleState );
+						//else
+						//	console.log(data[i].data.FormattedID, " has not team");
+					}
+					/*
+					for(var i=0; i<items.length; i++) {
+						for(var v=0; v<data.length; v++) {
+							if(data[v].data.Iteration._refObjectUUID==items[i].sprint._refObjectUUID && data[v].get('PlanEstimate')!==null) {
+								items[i].velocities[2]+=data[v].get('PlanEstimate');
+								items[i].velocities[3]+=data[v].get('PlanEstimate');
+							}
+						}
+						this.dataRow(items[i].team.Parent.Name,items[i].team.Name,items[i].sprint.Name,items[i].velocities[1],items[i].velocities[0],items[i].velocities[2],items[i].velocities[3], items[i].sprint.satisfaction);
+					}
+					*/
+				}
+				//scope:this
+			},
+			fetch: ['FormattedID', 'Project', 'Parent', 'ScheduleState', 'Iteration', 'PlanEstimate', 'Deliverysatisfactionscore110', 'Teamstatus', 'TeamLifecycle', 'LPCVelocity', 'Release', 'ProductOwnerInvolvement15']
+		});
+		
+	},
+	
+	dataRow: function(program, team, sprint, lpcVelocity, plannedVelocity, actualVelocity, defectpoints, satisfaction) {
+		var row = {
+			program: program,
+			team: team,
+			sprint: sprint,
+			lpcVelocity: lpcVelocity,
+			plannedVelocity: plannedVelocity,
+			actualVelocity: actualVelocity,
+			defectsVelocity: defectpoints,
+			targetUtilization: Math.round(100*plannedVelocity/lpcVelocity).toString(),
+			velocityReliability: Math.round(100*actualVelocity/plannedVelocity).toString(),
+			deliverySatisfaction: satisfaction
+		};
+		this.rows.push(row);
+		this.store.load();
+	},
+	
+	showTable : function() {
+		var me = this;
+		//var height = 500;
+		this.store = Ext.create('Rally.data.custom.Store', {
+			fields: [
+				{ name : "date" ,          type : "date"},
+				{ name : "team" ,          type : "string"},
+				{ name : "sprint" ,     type : "string"},
+				{ name : "lpcVelocity",    type : "number"}, 
+				{ name : "plannedVelocity",type : "number"}, 
+				{ name : "actualVelocity",type : "number"}, 
+				{ name : "defectsVelocity",type : "number"}, 
+				{ name : "targetUtilization",type : "string"}, 
+				{ name : "velocityReliability",type : "string"}, 
+				{ name : "deliverySatisfaction",type : "number"}
+			],
+			data : this.rows
+		});
+		// create the grid
+		this.grid = Ext.create('Rally.ui.grid.Grid', {
+			// title: 'Defect Density',
+			store: this.store,
+			//height: height,
+			columnCfgs: [
+				{ text : 'Program',           dataIndex: 'program'},
+				{ text : 'Team',           dataIndex: 'team'},
+				{ text : "Sprint",      dataIndex : "sprint", flex: 1.1 },
+				{ text : "LPC Velocity",   dataIndex : "lpcVelocity",      align : "center", renderer: this.renderVelocityinput }, 
+				{ text : "Planned Velocity",dataIndex : "plannedVelocity",  align : "center", renderer: this.renderVelocityinput },
+				{ text : "Actual Velocity",dataIndex : "actualVelocity",  align : "center", renderer: this.renderVelocityinput },
+				{ text : "Defect Story points",dataIndex : "defectsVelocity",  align : "center", renderer: this.renderVelocityinput },
+				{ text : "Target Utilization",dataIndex : "targetUtilization"},
+				{ text : "Velocity Reliability",dataIndex : "velocityReliability"},
+				{ text : "Delivery Satisfaction",dataIndex : "deliverySatisfaction",  align : "center", renderer: this.renderVelocityinput }
+			],
+			listeners: {
+				afterrender: function(grid) {
+					grid.setHeight(me.getHeight()-20);
+				}
+			}
+		});
+		this.add(this.grid);
 	},
 	
 	loadTeams: function(teams) {
@@ -32,7 +138,7 @@ Ext.define('CustomApp', {
 				},
 				scope: this
 			},
-			fetch: ['Name', 'Parent']
+			fetch: ['Name']
 		});
 	},
 	
@@ -145,90 +251,6 @@ Ext.define('CustomApp', {
 			fetch: ['FormattedID', 'Parent', 'ScheduleState', 'Iteration', 'PlanEstimate', 'Deliverysatisfactionscore110', 'Teamstatus', 'TeamLifecycle', 'LPCVelocity', 'Release', 'ProductOwnerInvolvement15']
 		});
 		
-	},
-	
-	loadDefects: function(filter, items) {
-		Ext.create('Rally.data.wsapi.Store', {
-			autoLoad : true,
-			model: 'Defect',
-			filters: filter,
-			listeners: {
-				load: function(store, data, success) {
-					for(var i=0; i<items.length; i++) {
-						for(var v=0; v<data.length; v++) {
-							if(data[v].data.Iteration._refObjectUUID==items[i].sprint._refObjectUUID && data[v].get('PlanEstimate')!==null) {
-								items[i].velocities[2]+=data[v].get('PlanEstimate');
-								items[i].velocities[3]+=data[v].get('PlanEstimate');
-							}
-						}
-						this.dataRow(items[i].team.Parent.Name,items[i].team.Name,items[i].sprint.Name,items[i].velocities[1],items[i].velocities[0],items[i].velocities[2],items[i].velocities[3], items[i].sprint.satisfaction);
-					}
-				},
-				scope:this
-			},
-			fetch: ['FormattedID', 'Parent', 'ScheduleState', 'Iteration', 'PlanEstimate', 'Deliverysatisfactionscore110', 'Teamstatus', 'TeamLifecycle', 'LPCVelocity', 'Release', 'ProductOwnerInvolvement15']
-		});
-		
-	},
-	
-	dataRow: function(program, team, sprint, lpcVelocity, plannedVelocity, actualVelocity, defectpoints, satisfaction) {
-		var row = {
-			program: program,
-			team: team,
-			sprint: sprint,
-			lpcVelocity: lpcVelocity,
-			plannedVelocity: plannedVelocity,
-			actualVelocity: actualVelocity,
-			defectsVelocity: defectpoints,
-			targetUtilization: Math.round(100*plannedVelocity/lpcVelocity).toString(),
-			velocityReliability: Math.round(100*actualVelocity/plannedVelocity).toString(),
-			deliverySatisfaction: satisfaction
-		};
-		this.rows.push(row);
-		this.store.load();
-	},
-	
-	showTable : function() {
-		var me = this;
-		//var height = 500;
-		this.store = Ext.create('Rally.data.custom.Store', {
-			fields: [
-				{ name : "program" ,          type : "string"},
-				{ name : "team" ,          type : "string"},
-				{ name : "sprint" ,     type : "string"},
-				{ name : "lpcVelocity",    type : "number"}, 
-				{ name : "plannedVelocity",type : "number"}, 
-				{ name : "actualVelocity",type : "number"}, 
-				{ name : "defectsVelocity",type : "number"}, 
-				{ name : "targetUtilization",type : "string"}, 
-				{ name : "velocityReliability",type : "string"}, 
-				{ name : "deliverySatisfaction",type : "number"}
-			],
-			data : this.rows
-		});
-		// create the grid
-		this.grid = Ext.create('Rally.ui.grid.Grid', {
-			// title: 'Defect Density',
-			store: this.store,
-			//height: height,
-			columnCfgs: [
-				{ text : 'Program',           dataIndex: 'program'},
-				{ text : 'Team',           dataIndex: 'team'},
-				{ text : "Sprint",      dataIndex : "sprint", flex: 1.1 },
-				{ text : "LPC Velocity",   dataIndex : "lpcVelocity",      align : "center", renderer: this.renderVelocityinput }, 
-				{ text : "Planned Velocity",dataIndex : "plannedVelocity",  align : "center", renderer: this.renderVelocityinput },
-				{ text : "Actual Velocity",dataIndex : "actualVelocity",  align : "center", renderer: this.renderVelocityinput },
-				{ text : "Defect Story points",dataIndex : "defectsVelocity",  align : "center", renderer: this.renderVelocityinput },
-				{ text : "Target Utilization",dataIndex : "targetUtilization"},
-				{ text : "Velocity Reliability",dataIndex : "velocityReliability"},
-				{ text : "Delivery Satisfaction",dataIndex : "deliverySatisfaction",  align : "center", renderer: this.renderVelocityinput }
-			],
-			listeners: {
-				afterrender: function(grid) {
-					grid.setHeight(me.getHeight()-20);
-				}
-			}
-		});
-		this.add(this.grid);
 	}
+	
 });
