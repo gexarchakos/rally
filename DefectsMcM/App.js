@@ -2,7 +2,7 @@ Ext.define('CustomApp', {
     extend: 'Rally.app.App',
     componentCls: 'app',
     launch: function() {
-		var teams = ['Blenders', 'Hue', 'Supernova'];
+		var teams = ['Supernova'];
 		this.start_date = '2015-02-02';
 
 		this.rows = [];
